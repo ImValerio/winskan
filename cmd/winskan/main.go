@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/imvalerio/winskan/pkg/registers/system"
 	"github.com/imvalerio/winskan/pkg/registers/userassist"
 )
 
@@ -44,10 +45,41 @@ func printEntries(w io.Writer, categoryName, guid string, lastRunOnly, focusTime
 	}
 }
 
+func printUSBHistory(w io.Writer) {
+	fmt.Fprintf(w, "\n>>> CATEGORY: USB History (SYSTEM Hive) <<<\n")
+	fmt.Fprintln(w, strings.Repeat("=", 60))
+
+	devices, err := system.GetUSBHistory()
+	if err != nil {
+		fmt.Fprintf(w, "[-] Failed to parse USB history from registry: %v\n", err)
+		return
+	}
+
+	if len(devices) == 0 {
+		fmt.Fprintf(w, "No USB history found on this system.\n")
+		return
+	}
+
+	for _, dev := range devices {
+		fmt.Fprintf(w, "Device Serial: %s\n", dev.SerialNumber)
+		if dev.VolumeName != "" {
+			fmt.Fprintf(w, "  Volume Name:   %s\n", dev.VolumeName)
+		}
+		fmt.Fprintf(w, "  Friendly Name: %s\n", dev.FriendlyName)
+		fmt.Fprintf(w, "  Vendor:        %s\n", dev.Vendor)
+		fmt.Fprintf(w, "  Product:       %s\n", dev.Product)
+		fmt.Fprintf(w, "  Revision:      %s\n", dev.Revision)
+		if len(dev.HardwareID) > 0 {
+			fmt.Fprintf(w, "  Hardware ID:   %s\n", strings.Join(dev.HardwareID, ", "))
+		}
+		fmt.Fprintln(w, strings.Repeat("-", 50))
+	}
+}
+
 func main() {
 	lastRunOnly := flag.Bool("last-run", false, "Print only entries with a non-zero last execution time")
 	focusTimeOnly := flag.Bool("focus-time", false, "Print only entries with a non-zero focus time")
-	category := flag.String("category", "all", "Select category to display: 'exe', 'lnk', or 'all'")
+	category := flag.String("category", "all", "Select category to display: 'exe', 'lnk', 'usb', or 'all'")
 	outputFile := flag.String("o", "", "Write output to the specified .txt file")
 	flag.Parse()
 
@@ -70,5 +102,9 @@ func main() {
 
 	if cat == "all" || cat == "lnk" {
 		printEntries(out, "Shortcuts", userassist.GUIDShortcuts, *lastRunOnly, *focusTimeOnly)
+	}
+
+	if cat == "all" || cat == "usb" {
+		printUSBHistory(out)
 	}
 }
