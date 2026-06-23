@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/imvalerio/winskan/pkg/registers/mru"
 	"github.com/imvalerio/winskan/pkg/registers/system"
 	"github.com/imvalerio/winskan/pkg/registers/userassist"
 )
@@ -76,10 +77,52 @@ func printUSBHistory(w io.Writer) {
 	}
 }
 
+func printRunMRU(w io.Writer) {
+	fmt.Fprintf(w, "\n>>> CATEGORY: RunMRU (Win + R) <<<\n")
+	fmt.Fprintln(w, strings.Repeat("=", 60))
+
+	entries, err := mru.ParseRunMRU()
+	if err != nil {
+		fmt.Fprintf(w, "[-] Failed to parse RunMRU registry key: %v\n", err)
+		return
+	}
+
+	if len(entries) == 0 {
+		fmt.Fprintf(w, "No RunMRU history found.\n")
+		return
+	}
+
+	for _, entry := range entries {
+		fmt.Fprintf(w, "[%d] %s\n", entry.Order, entry.Data)
+	}
+	fmt.Fprintln(w, strings.Repeat("-", 60))
+}
+
+func printRecentDocs(w io.Writer) {
+	fmt.Fprintf(w, "\n>>> CATEGORY: RecentDocs <<<\n")
+	fmt.Fprintln(w, strings.Repeat("=", 60))
+
+	entries, err := mru.ParseRecentDocs()
+	if err != nil {
+		fmt.Fprintf(w, "[-] Failed to parse RecentDocs registry key: %v\n", err)
+		return
+	}
+
+	if len(entries) == 0 {
+		fmt.Fprintf(w, "No RecentDocs history found.\n")
+		return
+	}
+
+	for _, entry := range entries {
+		fmt.Fprintf(w, "[%d] %s\n", entry.Order, entry.Data)
+	}
+	fmt.Fprintln(w, strings.Repeat("-", 60))
+}
+
 func main() {
 	lastRunOnly := flag.Bool("last-run", false, "Print only entries with a non-zero last execution time")
 	focusTimeOnly := flag.Bool("focus-time", false, "Print only entries with a non-zero focus time")
-	category := flag.String("category", "all", "Select category to display: 'exe', 'lnk', 'usb', or 'all'")
+	category := flag.String("category", "all", "Select category to display: 'exe', 'lnk', 'usb', 'runmru', 'recentdocs', or 'all'")
 	outputFile := flag.String("o", "", "Write output to the specified .txt file")
 	flag.Parse()
 
@@ -106,5 +149,13 @@ func main() {
 
 	if cat == "all" || cat == "usb" {
 		printUSBHistory(out)
+	}
+
+	if cat == "all" || cat == "runmru" {
+		printRunMRU(out)
+	}
+
+	if cat == "all" || cat == "recentdocs" {
+		printRecentDocs(out)
 	}
 }
