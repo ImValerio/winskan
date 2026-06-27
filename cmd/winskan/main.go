@@ -119,12 +119,87 @@ func printRecentDocs(w io.Writer) {
 	fmt.Fprintln(w, strings.Repeat("-", 60))
 }
 
+func getFilteredEntries(guid string, lastRunOnly, focusTimeOnly bool) []userassist.Entry {
+	entries, err := userassist.Parse(guid)
+	if err != nil {
+		log.Printf("[-] Failed to parse registry key for %s: %v\n", guid, err)
+		return nil
+	}
+	var filtered []userassist.Entry
+	for _, entry := range entries {
+		if lastRunOnly && entry.LastRun.IsZero() {
+			continue
+		}
+		if focusTimeOnly && entry.FocusTimeMs <= 0 {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+	return filtered
+}
+
 func main() {
 	lastRunOnly := flag.Bool("last-run", false, "Print only entries with a non-zero last execution time")
 	focusTimeOnly := flag.Bool("focus-time", false, "Print only entries with a non-zero focus time")
 	category := flag.String("category", "all", "Select category to display: 'exe', 'lnk', 'usb', 'runmru', 'recentdocs', or 'all'")
 	outputFile := flag.String("o", "", "Write output to the specified .txt file")
+	guiOutput := flag.Bool("gui", false, "Generate an HTML report with a minimal and polished design")
 	flag.Parse()
+
+	if *guiOutput {
+		if *outputFile == "" {
+			*outputFile = "winskan_report.html"
+		}
+		f, err := os.Create(*outputFile)
+		if err != nil {
+			log.Fatalf("Failed to create HTML output file: %v", err)
+		}
+		defer f.Close()
+
+		data := ReportData{
+			Timestamp: time.Now(),
+		}
+
+		cat := strings.ToLower(*category)
+
+		if cat == "all" || cat == "exe" {
+			data.Executables = getFilteredEntries(userassist.GUIDExecutables, *lastRunOnly, *focusTimeOnly)
+		}
+		if cat == "all" || cat == "lnk" {
+			data.Shortcuts = getFilteredEntries(userassist.GUIDShortcuts, *lastRunOnly, *focusTimeOnly)
+		}
+		if cat == "all" || cat == "usb" {
+			devices, err := system.GetUSBHistory()
+			if err == nil {
+				data.USBDevices = devices
+			} else {
+				log.Printf("[-] Failed to parse USB history: %v\n", err)
+			}
+		}
+		if cat == "all" || cat == "runmru" {
+			entries, err := mru.ParseRunMRU()
+			if err == nil {
+				data.RunMRU = entries
+			} else {
+				log.Printf("[-] Failed to parse RunMRU: %v\n", err)
+			}
+		}
+		if cat == "all" || cat == "recentdocs" {
+			entries, err := mru.ParseRecentDocs()
+			if err == nil {
+				data.RecentDocs = entries
+			} else {
+				log.Printf("[-] Failed to parse RecentDocs: %v\n", err)
+			}
+		}
+
+		err = generateHTMLReport(f, data)
+		if err != nil {
+			log.Fatalf("Failed to generate HTML report: %v", err)
+		}
+		fmt.Printf("[+] HTML report generated successfully at: %s\n", *outputFile)
+		return
+	}
 
 	var out io.Writer = os.Stdout
 
@@ -159,3 +234,4 @@ func main() {
 		printRecentDocs(out)
 	}
 }
+
