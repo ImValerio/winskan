@@ -14,24 +14,18 @@ import (
 	"github.com/imvalerio/winskan/pkg/registers/userassist"
 )
 
-func printEntries(w io.Writer, categoryName, guid string, lastRunOnly, focusTimeOnly bool) {
+// Modified to accept the pre-filtered slice of entries.
+func printEntries(w io.Writer, categoryName, guid string, entries []userassist.Entry) {
 	fmt.Fprintf(w, "\n>>> CATEGORY: %s (%s) <<<\n", categoryName, guid)
 	fmt.Fprintln(w, strings.Repeat("=", 60))
 
-	entries, err := userassist.Parse(guid)
-	if err != nil {
-		fmt.Fprintf(w, "[-] Failed to parse registry key for %s. It might not exist on this system or there is an error: %v\n", categoryName, err)
+	if len(entries) == 0 {
+		fmt.Fprintf(w, "No entries found for %s.\n", categoryName)
 		return
 	}
 
 	for _, entry := range entries {
-		if lastRunOnly && entry.LastRun.IsZero() {
-			continue
-		}
-		if focusTimeOnly && entry.FocusTimeMs <= 0 {
-			continue
-		}
-
+		// Note: The lastRunOnly and focusTimeOnly filtering is already done!
 		fmt.Fprintf(w, "Entry: %s\n", entry.Name)
 		fmt.Fprintf(w, "  Run Count:   %d\n", entry.RunCount)
 		fmt.Fprintf(w, "  Focus Count: %d\n", entry.FocusCount)
@@ -46,15 +40,10 @@ func printEntries(w io.Writer, categoryName, guid string, lastRunOnly, focusTime
 	}
 }
 
-func printUSBHistory(w io.Writer) {
+// Ensure the slice type matches what system.GetUSBHistory() returns (e.g., system.USBDevice)
+func printUSBHistory(w io.Writer, devices []system.USBDevice) {
 	fmt.Fprintf(w, "\n>>> CATEGORY: USB History (SYSTEM Hive) <<<\n")
 	fmt.Fprintln(w, strings.Repeat("=", 60))
-
-	devices, err := system.GetUSBHistory()
-	if err != nil {
-		fmt.Fprintf(w, "[-] Failed to parse USB history from registry: %v\n", err)
-		return
-	}
 
 	if len(devices) == 0 {
 		fmt.Fprintf(w, "No USB history found on this system.\n")
@@ -77,15 +66,10 @@ func printUSBHistory(w io.Writer) {
 	}
 }
 
-func printRunMRU(w io.Writer) {
+// Ensure the slice type matches what mru.ParseRunMRU() returns (e.g., mru.Entry)
+func printRunMRU(w io.Writer, entries []mru.Entry) {
 	fmt.Fprintf(w, "\n>>> CATEGORY: RunMRU (Win + R) <<<\n")
 	fmt.Fprintln(w, strings.Repeat("=", 60))
-
-	entries, err := mru.ParseRunMRU()
-	if err != nil {
-		fmt.Fprintf(w, "[-] Failed to parse RunMRU registry key: %v\n", err)
-		return
-	}
 
 	if len(entries) == 0 {
 		fmt.Fprintf(w, "No RunMRU history found.\n")
@@ -98,15 +82,10 @@ func printRunMRU(w io.Writer) {
 	fmt.Fprintln(w, strings.Repeat("-", 60))
 }
 
-func printRecentDocs(w io.Writer) {
+// Ensure the slice type matches what mru.ParseRecentDocs() returns
+func printRecentDocs(w io.Writer, entries []mru.Entry) {
 	fmt.Fprintf(w, "\n>>> CATEGORY: RecentDocs <<<\n")
 	fmt.Fprintln(w, strings.Repeat("=", 60))
-
-	entries, err := mru.ParseRecentDocs()
-	if err != nil {
-		fmt.Fprintf(w, "[-] Failed to parse RecentDocs registry key: %v\n", err)
-		return
-	}
 
 	if len(entries) == 0 {
 		fmt.Fprintf(w, "No RecentDocs history found.\n")
@@ -146,75 +125,14 @@ func main() {
 	guiOutput := flag.Bool("gui", false, "Generate an HTML report with a minimal and polished design")
 	flag.Parse()
 
-	if *outputFile == "" {
-		*outputFile = "output.txt"
-	} else {
+	// --- 1. SETUP OUTPUT WRITERS ---
+	var out io.Writer = os.Stdout
+	if *outputFile != "" {
 		if index := strings.LastIndex(*outputFile, "."); index != -1 {
 			*outputFile = (*outputFile)[:index] + ".txt"
 		} else {
 			*outputFile += ".txt"
 		}
-	}
-
-	guiOutputFile := *outputFile
-
-	if *guiOutput {
-		index := strings.LastIndex(guiOutputFile, ".")
-		guiOutputFile = (guiOutputFile)[:index] + ".html"
-
-		f, err := os.Create(guiOutputFile)
-		if err != nil {
-			log.Fatalf("Failed to create HTML output file: %v", err)
-		}
-		defer f.Close()
-
-		data := ReportData{
-			Timestamp: time.Now(),
-		}
-
-		cat := strings.ToLower(*category)
-
-		if cat == "all" || cat == "exe" {
-			data.Executables = getFilteredEntries(userassist.GUIDExecutables, *lastRunOnly, *focusTimeOnly)
-		}
-		if cat == "all" || cat == "lnk" {
-			data.Shortcuts = getFilteredEntries(userassist.GUIDShortcuts, *lastRunOnly, *focusTimeOnly)
-		}
-		if cat == "all" || cat == "usb" {
-			devices, err := system.GetUSBHistory()
-			if err == nil {
-				data.USBDevices = devices
-			} else {
-				log.Printf("[-] Failed to parse USB history: %v\n", err)
-			}
-		}
-		if cat == "all" || cat == "runmru" {
-			entries, err := mru.ParseRunMRU()
-			if err == nil {
-				data.RunMRU = entries
-			} else {
-				log.Printf("[-] Failed to parse RunMRU: %v\n", err)
-			}
-		}
-		if cat == "all" || cat == "recentdocs" {
-			entries, err := mru.ParseRecentDocs()
-			if err == nil {
-				data.RecentDocs = entries
-			} else {
-				log.Printf("[-] Failed to parse RecentDocs: %v\n", err)
-			}
-		}
-
-		err = generateHTMLReport(f, data)
-		if err != nil {
-			log.Fatalf("Failed to generate HTML report: %v", err)
-		}
-		fmt.Printf("[+] HTML report generated successfully at: %s\n", *outputFile)
-	}
-
-	var out io.Writer = os.Stdout
-
-	if *outputFile != "" {
 		f, err := os.Create(*outputFile)
 		if err != nil {
 			log.Fatalf("Failed to create output file: %v", err)
@@ -224,24 +142,79 @@ func main() {
 	}
 
 	cat := strings.ToLower(*category)
+	data := ReportData{
+		Timestamp: time.Now(),
+	}
 
+	// --- 2. DATA GATHERING PHASE (Executes Once) ---
 	if cat == "all" || cat == "exe" {
-		printEntries(out, "Executables", userassist.GUIDExecutables, *lastRunOnly, *focusTimeOnly)
+		data.Executables = getFilteredEntries(userassist.GUIDExecutables, *lastRunOnly, *focusTimeOnly)
 	}
-
 	if cat == "all" || cat == "lnk" {
-		printEntries(out, "Shortcuts", userassist.GUIDShortcuts, *lastRunOnly, *focusTimeOnly)
+		data.Shortcuts = getFilteredEntries(userassist.GUIDShortcuts, *lastRunOnly, *focusTimeOnly)
 	}
-
 	if cat == "all" || cat == "usb" {
-		printUSBHistory(out)
+		devices, err := system.GetUSBHistory()
+		if err == nil {
+			data.USBDevices = devices
+		} else {
+			log.Printf("[-] Failed to parse USB history: %v\n", err)
+		}
 	}
-
 	if cat == "all" || cat == "runmru" {
-		printRunMRU(out)
+		entries, err := mru.ParseRunMRU()
+		if err == nil {
+			data.RunMRU = entries
+		} else {
+			log.Printf("[-] Failed to parse RunMRU: %v\n", err)
+		}
+	}
+	if cat == "all" || cat == "recentdocs" {
+		entries, err := mru.ParseRecentDocs()
+		if err == nil {
+			data.RecentDocs = entries
+		} else {
+			log.Printf("[-] Failed to parse RecentDocs: %v\n", err)
+		}
 	}
 
+	// --- 3. GUI OUTPUT PHASE ---
+	if *guiOutput {
+		guiOutputFile := *outputFile
+		if guiOutputFile == "" {
+			guiOutputFile = "report.html"
+		} else {
+			index := strings.LastIndex(guiOutputFile, ".")
+			guiOutputFile = (guiOutputFile)[:index] + ".html"
+		}
+
+		f, err := os.Create(guiOutputFile)
+		if err != nil {
+			log.Fatalf("Failed to create HTML output file: %v", err)
+		}
+		defer f.Close()
+
+		err = generateHTMLReport(f, data)
+		if err != nil {
+			log.Fatalf("Failed to generate HTML report: %v", err)
+		}
+		fmt.Printf("[+] HTML report generated successfully at: %s\n", guiOutputFile)
+	}
+
+	// --- 4. TEXT OUTPUT PHASE ---
+	if cat == "all" || cat == "exe" {
+		printEntries(out, "Executables", userassist.GUIDExecutables, data.Executables)
+	}
+	if cat == "all" || cat == "lnk" {
+		printEntries(out, "Shortcuts", userassist.GUIDShortcuts, data.Shortcuts)
+	}
+	if cat == "all" || cat == "usb" {
+		printUSBHistory(out, data.USBDevices)
+	}
+	if cat == "all" || cat == "runmru" {
+		printRunMRU(out, data.RunMRU)
+	}
 	if cat == "all" || cat == "recentdocs" {
-		printRecentDocs(out)
+		printRecentDocs(out, data.RecentDocs)
 	}
 }
