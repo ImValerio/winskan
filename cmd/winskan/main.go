@@ -146,11 +146,23 @@ func main() {
 	guiOutput := flag.Bool("gui", false, "Generate an HTML report with a minimal and polished design")
 	flag.Parse()
 
-	if *guiOutput {
-		if *outputFile == "" {
-			*outputFile = "winskan_report.html"
+	if *outputFile == "" {
+		*outputFile = "output.txt"
+	} else {
+		if index := strings.LastIndex(*outputFile, "."); index != -1 {
+			*outputFile = (*outputFile)[:index] + ".txt"
+		} else {
+			*outputFile += ".txt"
 		}
-		f, err := os.Create(*outputFile)
+	}
+
+	guiOutputFile := *outputFile
+
+	if *guiOutput {
+		index := strings.LastIndex(guiOutputFile, ".")
+		guiOutputFile = (guiOutputFile)[:index] + ".html"
+
+		f, err := os.Create(guiOutputFile)
 		if err != nil {
 			log.Fatalf("Failed to create HTML output file: %v", err)
 		}
@@ -198,7 +210,6 @@ func main() {
 			log.Fatalf("Failed to generate HTML report: %v", err)
 		}
 		fmt.Printf("[+] HTML report generated successfully at: %s\n", *outputFile)
-		return
 	}
 
 	var out io.Writer = os.Stdout
@@ -234,4 +245,3 @@ func main() {
 		printRecentDocs(out)
 	}
 }
-
