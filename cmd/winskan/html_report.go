@@ -28,69 +28,166 @@ const htmlTemplateStr = `
     <title>Winskan Report</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0f172a;
-            --container-bg: #1e293b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --accent-color: #38bdf8;
-            --border-color: #334155;
-            --hover-bg: #334155;
+            color-scheme: light;
+            --bg-color: #f5f5f5;
+            --surface-color: #ffffff;
+            --primary-color: #1a73e8; /* Google Blue */
+            --primary-hover: #174ea6;
+            --text-primary: rgba(0, 0, 0, 0.87);
+            --text-secondary: rgba(0, 0, 0, 0.60);
+            --divider-color: rgba(0, 0, 0, 0.12);
+            --hover-color: rgba(0, 0, 0, 0.04);
+            --elevation-1: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+            --elevation-2: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
+        }
+
+        :root[data-theme="dark"] {
+            color-scheme: dark;
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --primary-color: #8ab4f8;
+            --primary-hover: #aecbfa;
+            --text-primary: rgba(255, 255, 255, 0.92);
+            --text-secondary: rgba(255, 255, 255, 0.68);
+            --divider-color: rgba(255, 255, 255, 0.16);
+            --hover-color: rgba(255, 255, 255, 0.08);
+            --elevation-1: 0 1px 3px rgba(0,0,0,0.48), 0 1px 2px rgba(0,0,0,0.72);
+            --elevation-2: 0 3px 6px rgba(0,0,0,0.52), 0 3px 6px rgba(0,0,0,0.68);
         }
 
         body {
             margin: 0;
             padding: 0;
             background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: 'Inter', sans-serif;
-            line-height: 1.6;
+            color: var(--text-primary);
+            font-family: 'Roboto', sans-serif;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        header.app-bar {
+            background-color: var(--primary-color);
+            color: var(--surface-color);
+            padding: 24px;
+            box-shadow: var(--elevation-2);
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .app-bar-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+        }
+
+        .report-title {
+            flex: 1;
+            text-align: center;
+        }
+
+        header.app-bar h1 {
+            margin: 0;
+            font-size: 2.25rem;
+            font-weight: 500;
+            letter-spacing: 0.01em;
+        }
+
+        .timestamp {
+            font-size: 0.9rem;
+            opacity: 0.85;
+            margin-top: 8px;
+        }
+
+        .theme-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            user-select: none;
+            white-space: nowrap;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .theme-toggle input {
+            position: absolute;
+            opacity: 0;
+            width: 1px;
+            height: 1px;
+        }
+
+        .theme-toggle-slider {
+            position: relative;
+            width: 48px;
+            height: 26px;
+            border-radius: 999px;
+            background-color: rgba(255, 255, 255, 0.35);
+            cursor: pointer;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .theme-toggle-slider::before {
+            content: "";
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: var(--surface-color);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.35);
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+
+        .theme-toggle input:checked + .theme-toggle-slider {
+            background-color: rgba(0, 0, 0, 0.38);
+        }
+
+        .theme-toggle input:checked + .theme-toggle-slider::before {
+            transform: translateX(22px);
+        }
+
+        .theme-toggle input:focus-visible + .theme-toggle-slider {
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+        }
+
+        .theme-toggle-text {
+            cursor: pointer;
         }
 
         .container {
             max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
+            margin: 32px auto;
+            padding: 0 24px;
         }
 
-        header {
-            text-align: center;
-            margin-bottom: 3rem;
-            padding-bottom: 2rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        h1 {
-            color: var(--accent-color);
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-            font-weight: 700;
-        }
-
-        .timestamp {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
-
-        section {
-            background-color: var(--container-bg);
-            border-radius: 12px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        .data-section {
+            background-color: var(--surface-color);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 32px;
+            box-shadow: var(--elevation-1);
             overflow-x: auto;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         h2 {
-            color: var(--accent-color);
+            color: var(--text-primary);
             margin-top: 0;
-            margin-bottom: 1.5rem;
+            margin-bottom: 24px;
             font-size: 1.5rem;
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 0.5rem;
-            font-weight: 600;
+            font-weight: 500;
+            border-bottom: 1px solid var(--divider-color);
+            padding-bottom: 16px;
         }
 
         /* Controls: Search and Pagination Page Size */
@@ -98,34 +195,31 @@ const htmlTemplateStr = `
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1rem;
+            margin-bottom: 16px;
             flex-wrap: wrap;
-            gap: 1rem;
+            gap: 16px;
+        }
+
+        .search-input, .page-size {
+            padding: 12px 16px;
+            border-radius: 4px;
+            border: 1px solid var(--divider-color);
+            background-color: var(--surface-color);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         .search-input {
-            padding: 0.6rem 1rem;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: inherit;
             flex: 1;
-            max-width: 300px;
+            max-width: 320px;
         }
 
-        .search-input:focus {
+        .search-input:focus, .page-size:focus {
             outline: none;
-            border-color: var(--accent-color);
-        }
-        
-        .page-size {
-            padding: 0.6rem;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: inherit;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 1px var(--primary-color);
         }
 
         table {
@@ -135,16 +229,19 @@ const htmlTemplateStr = `
         }
 
         th, td {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border-color);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--divider-color);
         }
 
         th {
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            letter-spacing: 0.05em;
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        td {
+            font-size: 0.875rem;
+            color: var(--text-primary);
         }
 
         tr:last-child td {
@@ -156,7 +253,7 @@ const htmlTemplateStr = `
         }
 
         tbody tr:hover {
-            background-color: var(--hover-bg);
+            background-color: var(--hover-color);
         }
 
         /* Pagination Buttons */
@@ -164,34 +261,38 @@ const htmlTemplateStr = `
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 1rem;
-            border-top: 1px solid var(--border-color);
-            padding-top: 1rem;
+            margin-top: 16px;
+            border-top: 1px solid var(--divider-color);
+            padding-top: 16px;
         }
 
         .pagination button {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            border: 1px solid var(--border-color);
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
+            background-color: transparent;
+            color: var(--primary-color);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
             cursor: pointer;
             font-family: inherit;
-            transition: all 0.2s ease;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: background-color 0.2s ease;
         }
 
         .pagination button:hover:not(:disabled) {
-            background-color: var(--border-color);
+            background-color: var(--hover-color);
         }
 
         .pagination button:disabled {
-            opacity: 0.5;
+            color: var(--text-secondary);
             cursor: not-allowed;
+            background-color: transparent;
         }
 
         .page-info {
-            font-size: 0.9rem;
-            color: var(--text-muted);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
         }
 
         .hidden {
@@ -199,20 +300,28 @@ const htmlTemplateStr = `
         }
 
         .no-data {
-            color: var(--text-muted);
+            color: var(--text-secondary);
             font-style: italic;
         }
 
         /* Responsive */
         @media (max-width: 768px) {
-            .container {
-                padding: 1rem;
+            .app-bar-content {
+                flex-direction: column;
+                gap: 16px;
             }
-            section {
-                padding: 1rem;
+            .report-title {
+                text-align: center;
+            }
+            .container {
+                padding: 0 16px;
+                margin: 24px auto;
+            }
+            .data-section {
+                padding: 16px;
             }
             th, td {
-                padding: 0.75rem 0.5rem;
+                padding: 10px 12px;
             }
             .controls {
                 flex-direction: column;
@@ -225,12 +334,21 @@ const htmlTemplateStr = `
     </style>
 </head>
 <body>
+    <header class="app-bar">
+        <div class="app-bar-content">
+            <div class="report-title">
+                <h1>Winskan Forensic Report</h1>
+                <div class="timestamp">Generated on {{.Timestamp.Format "Jan 02, 2006 15:04:05 MST"}}</div>
+            </div>
+            <label class="theme-toggle" for="themeToggle">
+                <input type="checkbox" id="themeToggle" aria-label="Toggle dark mode">
+                <span class="theme-toggle-slider" aria-hidden="true"></span>
+                <span class="theme-toggle-text">Dark mode</span>
+            </label>
+        </div>
+    </header>
+    
     <div class="container">
-        <header>
-            <h1>Winskan Forensic Report</h1>
-            <div class="timestamp">Generated on {{.Timestamp.Format "Jan 02, 2006 15:04:05 MST"}}</div>
-        </header>
-
         {{if .Executables}}
         <section class="data-section">
             <h2>UserAssist: Executables</h2>
@@ -437,7 +555,7 @@ const htmlTemplateStr = `
         {{end}}
 
         {{if and (not .Executables) (not .Shortcuts) (not .USBDevices) (not .RunMRU) (not .RecentDocs)}}
-        <section>
+        <section class="data-section">
             <h2>No Data Found</h2>
             <p class="no-data">The requested categories did not return any data, or the system does not have this information available.</p>
         </section>
@@ -446,6 +564,46 @@ const htmlTemplateStr = `
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const themeToggle = document.getElementById('themeToggle');
+            const themeStorageKey = 'winskan-report-theme';
+
+            const getStoredTheme = () => {
+                try {
+                    return localStorage.getItem(themeStorageKey);
+                } catch (error) {
+                    return null;
+                }
+            };
+
+            const setStoredTheme = (theme) => {
+                try {
+                    localStorage.setItem(themeStorageKey, theme);
+                } catch (error) {
+                    // Some browsers disable localStorage for local files or privacy settings.
+                }
+            };
+
+            const prefersDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const initialTheme = getStoredTheme() || (prefersDarkMode ? 'dark' : 'light');
+            const applyTheme = (theme) => {
+                const isDark = theme === 'dark';
+                document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+                if (themeToggle) {
+                    themeToggle.checked = isDark;
+                    themeToggle.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+                }
+            };
+
+            applyTheme(initialTheme);
+
+            if (themeToggle) {
+                themeToggle.addEventListener('change', () => {
+                    const selectedTheme = themeToggle.checked ? 'dark' : 'light';
+                    applyTheme(selectedTheme);
+                    setStoredTheme(selectedTheme);
+                });
+            }
+
             const sections = document.querySelectorAll('.data-section');
             
             sections.forEach(section => {
@@ -454,6 +612,7 @@ const htmlTemplateStr = `
                 const prevButton = section.querySelector('.prev-page');
                 const nextButton = section.querySelector('.next-page');
                 const pageInfo = section.querySelector('.page-info');
+                const paginationFooter = section.querySelector('.pagination');
                 const tbody = section.querySelector('tbody');
                 
                 if (!tbody) return;
@@ -461,9 +620,16 @@ const htmlTemplateStr = `
                 const allRows = Array.from(tbody.querySelectorAll('tr'));
                 let filteredRows = [...allRows];
                 let currentPage = 1;
-                let pageSize = parseInt(pageSizeSelect.value, 10);
+                
+                const minimumPageSize = 10;
+                pageSizeSelect.value = String(minimumPageSize);
+                let pageSize = minimumPageSize;
 
                 const updateTable = () => {
+                    pageSizeSelect.hidden = filteredRows.length < minimumPageSize;
+                    paginationFooter.hidden = filteredRows.length <= minimumPageSize;
+                    paginationFooter.style.display = filteredRows.length <= minimumPageSize ? 'none' : '';
+
                     const totalPages = pageSize === -1 ? 1 : Math.ceil(filteredRows.length / pageSize) || 1;
                     if (currentPage > totalPages) currentPage = totalPages;
                     if (currentPage < 1) currentPage = 1;
